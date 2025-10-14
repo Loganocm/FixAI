@@ -61,6 +61,7 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
 
     setMessages([initialUserMessage]);
 
+    console.log('Supabase URL from env:', import.meta.env.VITE_SUPABASE_URL);
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-installation-help`,
