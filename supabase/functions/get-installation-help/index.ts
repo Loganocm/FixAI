@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Apikey, x-client-info",
 };
 
 interface RequestPayload {
