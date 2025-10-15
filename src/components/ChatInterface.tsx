@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, ArrowLeft } from 'lucide-react';
-import { ChatMessage } from './ChatMessage';
+import { useState, useRef, useEffect } from "react";
+import { Send, Loader2, ArrowLeft } from "lucide-react";
+import { ChatMessage } from "./ChatMessage";
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -22,13 +22,13 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasFetchedRef = useRef(false); // ✅ Prevents double-call in StrictMode
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -49,27 +49,28 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
     if (carInfo.isCustomPart) {
       initialUserMessageContent = `I need help installing this part: ${carInfo.partName} on my ${carInfo.carYear} ${carInfo.carMake} ${carInfo.carModel}.`;
     } else {
-      const article = carInfo.partArticle ? `${carInfo.partArticle} ` : '';
+      const article = carInfo.partArticle ? `${carInfo.partArticle} ` : "";
       initialUserMessageContent = `I need help installing ${article}${carInfo.partName} on my ${carInfo.carYear} ${carInfo.carMake} ${carInfo.carModel}.`;
     }
 
     const initialUserMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: initialUserMessageContent,
     };
 
     setMessages([initialUserMessage]);
 
-    console.log('Supabase URL from env:', import.meta.env.VITE_SUPABASE_URL);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-installation-help`,
+        `${
+          import.meta.env.VITE_SUPABASE_URL
+        }/functions/v1/get-installation-help`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             carMake: carInfo.carMake,
@@ -82,34 +83,39 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || 'Failed to get installation help');
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        console.error("API Error:", errorData);
+        throw new Error(errorData.error || "Failed to get installation help");
       }
 
       const data = await response.json();
-      
+
       // ✅ Handle the new API response structure
       if (!data.newMessages || !Array.isArray(data.newMessages)) {
-          throw new Error("Invalid API response format. Expected 'newMessages' array.");
+        throw new Error(
+          "Invalid API response format. Expected 'newMessages' array."
+        );
       }
 
       // ✅ Map ALL new messages from the server to the state
-      const newMessagesToAdd: Message[] = data.newMessages.map((msg: any, index: number) => ({
-        id: (Date.now() + 1 + index).toString(), // Unique ID for each new message
-        role: 'assistant', // Server only sends assistant messages
-        content: msg.content,
-      }));
+      const newMessagesToAdd: Message[] = data.newMessages.map(
+        (msg: any, index: number) => ({
+          id: (Date.now() + 1 + index).toString(), // Unique ID for each new message
+          role: "assistant", // Server only sends assistant messages
+          content: msg.content,
+        })
+      );
 
       // ✅ Append all new messages to the chat
       setMessages((prev) => [...prev, ...newMessagesToAdd]);
-
     } catch (error) {
-      console.error('Error fetching initial help:', error);
+      console.error("Error fetching initial help:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -123,13 +129,13 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: input,
     };
 
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
-    setInput('');
+    setInput("");
     setIsLoading(true);
 
     try {
@@ -140,12 +146,14 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
       }));
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-installation-help`,
+        `${
+          import.meta.env.VITE_SUPABASE_URL
+        }/functions/v1/get-installation-help`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             carMake: carInfo.carMake,
@@ -158,32 +166,37 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || 'Failed to send message');
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        console.error("API Error:", errorData);
+        throw new Error(errorData.error || "Failed to send message");
       }
 
       const data = await response.json();
 
       // ✅ Handle the new API response structure for follow-up messages as well
       if (!data.newMessages || !Array.isArray(data.newMessages)) {
-          throw new Error("Invalid API response format. Expected 'newMessages' array.");
+        throw new Error(
+          "Invalid API response format. Expected 'newMessages' array."
+        );
       }
-      
-      const newMessagesToAdd: Message[] = data.newMessages.map((msg: any, index: number) => ({
-        id: (Date.now() + 1 + index).toString(),
-        role: 'assistant',
-        content: msg.content,
-      }));
+
+      const newMessagesToAdd: Message[] = data.newMessages.map(
+        (msg: any, index: number) => ({
+          id: (Date.now() + 1 + index).toString(),
+          role: "assistant",
+          content: msg.content,
+        })
+      );
 
       setMessages((prev) => [...prev, ...newMessagesToAdd]);
-
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -204,13 +217,19 @@ export function ChatInterface({ carInfo, onBack }: ChatInterfaceProps) {
           <h2 className="text-lg font-semibold text-gray-900">
             {carInfo.carYear} {carInfo.carMake} {carInfo.carModel}
           </h2>
-          <p className="text-sm text-gray-600">Installing: {carInfo.partName}</p>
+          <p className="text-sm text-gray-600">
+            Installing: {carInfo.partName}
+          </p>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {messages.map((message) => (
-          <ChatMessage key={message.id} role={message.role} content={message.content} />
+          <ChatMessage
+            key={message.id}
+            role={message.role}
+            content={message.content}
+          />
         ))}
 
         {isLoading && (
