@@ -305,3 +305,34 @@ export function getCarYears(makeName: string, modelName: string): number[] {
   const model = make.models.find(m => m.name.toLowerCase() === modelName.toLowerCase());
   return model ? model.years.sort((a, b) => b - a) : [];
 }
+
+const electricCarMakes = ['Tesla'];
+const evExcludedParts = ['Air Filter', 'Oil Filter', 'Spark Plugs', 'Serpentine Belt', 'Alternator', 'Starter Motor', 'Fuel Filter', 'Radiator'];
+
+export function getCommonParts(makeName: string): { display: string; article: string }[] {
+  const isElectric = electricCarMakes.some(make => make.toLowerCase() === makeName.toLowerCase());
+  
+  const allParts = [
+    { display: 'Brake Pads', article: '' },
+    { display: 'Air Filter', article: 'an' },
+    { display: 'Oil Filter', article: 'an' },
+    { display: 'Spark Plugs', article: '' },
+    { display: 'Battery', article: 'a' },
+    { display: 'Cabin Air Filter', article: 'a' },
+    { display: 'Wiper Blades', article: '' },
+    { display: 'Headlight Bulb', article: 'a' },
+    { display: 'Serpentine Belt', article: 'a' },
+    { display: 'Alternator', article: 'an' },
+    { display: 'Starter Motor', article: 'a' },
+    { display: 'Thermostat', article: 'a' },
+    { display: 'Radiator', article: 'a' },
+    { display: 'Fuel Filter', article: 'a' },
+    { display: 'Oxygen Sensor', article: 'an' },
+  ];
+
+  if (isElectric) {
+    return allParts.filter(part => !evExcludedParts.includes(part.display));
+  }
+
+  return allParts;
+}

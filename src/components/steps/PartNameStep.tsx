@@ -1,4 +1,5 @@
-import { Wrench, ChevronLeft } from 'lucide-react';
+import { Wrench, ChevronLeft } from "lucide-react";
+import { getCommonParts } from "../../data/carData";
 
 interface PartNameStepProps {
   value: string;
@@ -10,25 +11,16 @@ interface PartNameStepProps {
   carYear: string;
 }
 
-const commonParts = [
-  { display: 'Brake Pads', article: '' },
-  { display: 'Air Filter', article: 'an' },
-  { display: 'Oil Filter', article: 'an' },
-  { display: 'Spark Plugs', article: '' },
-  { display: 'Battery', article: 'a' },
-  { display: 'Cabin Air Filter', article: 'a' },
-  { display: 'Wiper Blades', article: '' },
-  { display: 'Headlight Bulb', article: 'a' },
-  { display: 'Serpentine Belt', article: 'a' },
-  { display: 'Alternator', article: 'an' },
-  { display: 'Starter Motor', article: 'a' },
-  { display: 'Thermostat', article: 'a' },
-  { display: 'Radiator', article: 'a' },
-  { display: 'Fuel Filter', article: 'a' },
-  { display: 'Oxygen Sensor', article: 'an' },
-];
-
-export function PartNameStep({ value, onChange, onSubmit, onBack, carMake, carModel, carYear }: PartNameStepProps) {
+export function PartNameStep({
+  value,
+  onChange,
+  onSubmit,
+  onBack,
+  carMake,
+  carModel,
+  carYear,
+}: PartNameStepProps) {
+  const commonParts = getCommonParts(carMake);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim()) {
@@ -48,9 +40,15 @@ export function PartNameStep({ value, onChange, onSubmit, onBack, carMake, carMo
             <Wrench className="w-7 h-7 text-white" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 mb-1">{carYear} {carMake} {carModel}</p>
-            <h1 className="text-3xl font-bold text-gray-900">Which part are you installing?</h1>
-            <p className="text-gray-600 mt-1">Select a common part or type your own</p>
+            <p className="text-sm text-gray-500 mb-1">
+              {carYear} {carMake} {carModel}
+            </p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Which part are you installing?
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Select a common part or type your own
+            </p>
           </div>
         </div>
 
@@ -59,7 +57,7 @@ export function PartNameStep({ value, onChange, onSubmit, onBack, carMake, carMo
             <input
               type="text"
               value={value}
-              onChange={(e) => onChange(e.target.value, '', true)}
+              onChange={(e) => onChange(e.target.value, "", true)}
               placeholder="Type part name..."
               className="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               autoFocus
@@ -67,7 +65,9 @@ export function PartNameStep({ value, onChange, onSubmit, onBack, carMake, carMo
           </div>
 
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-3">Common parts:</p>
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Common parts:
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
               {commonParts.map((part) => (
                 <button
@@ -76,8 +76,8 @@ export function PartNameStep({ value, onChange, onSubmit, onBack, carMake, carMo
                   onClick={() => handlePartSelect(part)}
                   className={`px-4 py-3 rounded-lg border-2 transition-all text-left ${
                     value === part.display
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700'
+                      ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700"
                   }`}
                 >
                   {part.display}
