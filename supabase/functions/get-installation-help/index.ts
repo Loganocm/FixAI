@@ -90,8 +90,11 @@ Please provide a COMPLETE and DETAILED guide including:
         }
 
         // 3. CALL GEMINI WITH SYSTEM INSTRUCTION
+        // Optimization: Use Flash for fast initial guide, Pro for complex follow-up questions
+        const model = conversationHistory.length > 0 ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+
         const response = await ai.models.generateContent({
-            model: "gemini-3-pro-preview",
+            model: model,
             contents: messages,
             systemInstruction: systemPrompt, // ✅ Critical: Persists persona across turns
             config: {
