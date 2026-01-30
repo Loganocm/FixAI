@@ -49,7 +49,15 @@ Deno.serve(async (req) => {
         const ai = new GoogleGenAI({
             apiKey: geminiApiKey
         });
-        const { carMake, carModel, carYear, partName, conversationHistory = [] } = await req.json();
+        const { carMake, carModel, carYear, conversationHistory = [] } = await req.json();
+        let { partName } = await req.json();
+
+        // 🔧 FIX: Ambiguity Resolution
+        // "Air Filter" usually implies "Engine Air Filter", but can be confused with "Cabin Air Filter".
+        // We explicitly rename it here to ensure AI and YouTube search are specific.
+        if (partName === "Air Filter") {
+            partName = "Engine Air Filter";
+        }
 
         // 1. DEFINE SYSTEM PROMPT (Always applies)
         const systemPrompt = `You are an expert automotive mechanic assistant specializing in car part installation.
