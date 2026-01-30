@@ -14,11 +14,14 @@ const corsHeaders = {
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            console.error("YouTube API error:", await response.text());
-            return null;
+            const errorText = await response.text();
+            console.error("YouTube API error:", errorText);
+            return `\n\n**⚠️ YouTube API Error:** ${response.status} - ${errorText}`;
         }
         const data = await response.json();
-        if (!data.items || data.items.length === 0) return null;
+        if (!data.items || data.items.length === 0) {
+            return `\n\n**ℹ️ No videos found** for query: \`${finalQuery}\``;
+        }
         let message = "\n\n### 🔧 Recommended Installation Videos\n\nHere are a few videos that might help you with the installation:\n\n";
         for (const item of data.items.slice(0, 3)) {
             const videoId = item.id.videoId;
@@ -30,7 +33,7 @@ const corsHeaders = {
         return message;
     } catch (error) {
         console.error("Error searching YouTube:", error);
-        return null;
+        return `\n\n**⚠️ Video Search Error:** ${error.message}`;
     }
 }
 Deno.serve(async (req) => {
@@ -111,10 +114,26 @@ Please provide a COMPLETE and DETAILED guide including:
         let youtubeQuery = null;
 
         // 4. EXTRACT AND REMOVE SEARCH QUERY
-        const queryMatch = guide.match(/SEARCH_QUERY:\s*(.+)$/m);
+        // Regex handles:
+        // - "SEARCH_QUERY:" or "Search Query:"
+        // - Optional ** bold markers
+        // - Case insensitivity
+        const queryMatch = guide.match(/(?:SEARCH_QUERY|Search Query)[:\s]+(.+)$/im);
+
+        console.log("Gemini Guide Length:", guide.length);
+        console.log("Query Match Found:", !!queryMatch);
+
         if (queryMatch) {
-            youtubeQuery = queryMatch[1].trim(); // Extract query
-            guide = guide.replace(/SEARCH_QUERY:\s*(.+)$/m, '').trim(); // Remove from visible text
+            youtubeQuery = queryMatch[1].trim();
+            // Remove the line from the visible text so user doesn't see it
+            guide = guide.replace(/(?:SEARCH_QUERY|Search Query)[:\s]+(.+)$/im, '').trim();
+            console.log("Extracted Query:", youtubeQuery);
+        } else {
+            // FALLBACK: If AI forgets to generate the query line, allow the "dumb" search 
+            // but effectively we can construct a better one manually or just log warning.
+            // Let's use the explicit "Make Model Year Part" query as a safety net.
+            console.warn("AI did not generate SEARCH_QUERY line. Using fallback.");
+            youtubeQuery = `"${carMake} ${carModel}" ${carYear} "${partName}" installation`;
         }
 
         const newAssistantMessages = [
@@ -124,14 +143,13 @@ Please provide a COMPLETE and DETAILED guide including:
             }
         ];
 
-        // 5. SEARCH YOUTUBE IF QUERY EXISTS (Applied to both initial and chat if AI provides query)
+        // 5. SEARCH YOUTUBE IF QUERY EXISTS
         if (youtubeQuery) {
             const youtubeApiKey = Deno.env.get("YOUTUBE_API_KEY");
             if (youtubeApiKey) {
-                // Use the AI-generated query directly
                 const videoMessage = await searchYouTubeVideos(youtubeApiKey, youtubeQuery);
+                // ALWAYS append video message, even if it's an error string
                 if (videoMessage) {
-                    // Start a new message block for the videos so it appends cleanly
                     if (newAssistantMessages.length > 0) {
                         newAssistantMessages[0].content += videoMessage;
                     }
