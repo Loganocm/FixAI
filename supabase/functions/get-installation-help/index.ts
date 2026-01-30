@@ -19,7 +19,7 @@ const corsHeaders = {
         const data = await response.json();
         if (!data.items || data.items.length === 0) return null;
         let message = "### 🔧 Recommended Installation Videos\n\nHere are a few videos that might help you with the installation:\n\n";
-        for (const item of data.items) {
+        for (const item of data.items.slice(0, 3)) {
             const videoId = item.id.videoId;
             const title = item.snippet.title;
             const channelTitle = item.snippet.channelTitle;
