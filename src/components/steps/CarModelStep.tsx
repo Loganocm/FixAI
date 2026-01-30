@@ -1,5 +1,5 @@
-import { Gauge, ChevronRight, ChevronLeft, Search, Loader2 } from 'lucide-react';
-import { fetchCarModels, CarModel } from '../../data/carData';
+import { Gauge, ChevronRight, ChevronLeft } from 'lucide-react';
+import { fetchCarModels, CarModel, getInitialModels } from '../../data/carData';
 import { useEffect, useState } from 'react';
 
 interface CarModelStepProps {
@@ -11,21 +11,22 @@ interface CarModelStepProps {
 }
 
 export function CarModelStep({ value, onChange, onNext, onBack, carMake }: CarModelStepProps) {
-  const [models, setModels] = useState<CarModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  // Initialize with fallback for instant render
+  const [models, setModels] = useState<CarModel[]>(getInitialModels(carMake));
 
   useEffect(() => {
+    // If make changed, reset and load
+    setModels(getInitialModels(carMake));
+    
     async function loadModels() {
       if (!carMake) return;
-      setLoading(true);
       try {
         const data = await fetchCarModels(carMake);
-        setModels(data);
+        if (data.length > 0) {
+            setModels(data);
+        }
       } catch (error) {
         console.error('Failed to load models', error);
-      } finally {
-        setLoading(false);
       }
     }
     loadModels();
@@ -42,10 +43,6 @@ export function CarModelStep({ value, onChange, onNext, onBack, carMake }: CarMo
     onChange(model);
   };
 
-  const filteredModels = models.filter(model => 
-    model.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="w-full max-w-2xl mx-auto animate-fade-in">
       <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
@@ -61,26 +58,10 @@ export function CarModelStep({ value, onChange, onNext, onBack, carMake }: CarMo
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input 
-                    type="text" 
-                    placeholder="Search models..." 
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-1">
-             {loading ? (
-                <div className="col-span-full flex justify-center py-8">
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                </div>
-            ) : filteredModels.length > 0 ? ( 
-                filteredModels.map((model) => (
+             {models.map((model) => (
                     <button
-                        key={model.id}
+                        key={model.name}
                         type="button"
                         onClick={() => handleModelSelect(model.name)}
                         className={`px-4 py-3 rounded-lg border-2 transition-all ${
@@ -91,12 +72,7 @@ export function CarModelStep({ value, onChange, onNext, onBack, carMake }: CarMo
                     >
                         {model.name}
                     </button>
-                    ))
-            ) : (
-                <div className="col-span-full text-center text-gray-500 py-4">
-                    No models found matching "{searchTerm}"
-                </div>
-            )}
+                    ))}
           </div>
 
           <div className="flex gap-3">

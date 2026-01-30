@@ -38,89 +38,78 @@ Deno.serve(async (req) => {
 
     try {
         console.log('Fetching Makes from NHTSA...')
-        // Get all makes for passenger cars (id 2) to filter down a bit, or just get all.
         // NHTSA list is HUGE. Let's try "GetMakesForVehicleType/car"
         const makesRes = await fetch(`${NHTSA_BASE_URL}/GetMakesForVehicleType/car?format=json`)
         const makesData = await makesRes.json()
         const nhtsaMakes: NhtsaMake[] = makesData.Results
 
-        console.log(`Found ${nhtsaMakes.length} makes. Syncing top makes...`)
+        // Priority list comes from the user's hardcoded preferences
+        const PRIORITY_MAKES = [
+            'Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'BMW', 'Mercedes-Benz',
+            'Volkswagen', 'Audi', 'Mazda', 'Hyundai', 'Kia', 'Subaru', 'Jeep', 'Ram',
+            'Tesla', 'Lexus', 'Acura', 'Dodge', 'GMC', 'Buick', 'Cadillac', 'Lincoln',
+            'Volvo', 'Porsche', 'Mitsubishi'
+        ];
 
-        // IMPORTANT: Syncing ALL makes takes too long and has garbage data.
-        // We will prioritize common makes + the user's requested "Toyota".
-        // Actually, let's just insert them all but filter out duplicates/weird ones.
-        // For performance in this demo, let's limit to top 100 or specific list if possible,
-        // but the user wanted "every car".
+        console.log('Syncing priority makes only...');
 
-        // We will batch insert makes.
-        const uniqueMakes = new Set<string>()
-        nhtsaMakes.forEach(m => {
-            // Normalize: Title Case? NHTSA is often UPPERCASE
-            const name = formatName(m.Make_Name)
-            if (name) uniqueMakes.add(name)
-        })
+        // 1. Upsert Priority Makes
+        const makesToUpsert = PRIORITY_MAKES.map(name => ({ name }));
 
-        // To respect the user's "click through" flow, we probably don't want 5000 makes.
-        // But "Fix car models" implies completeness.
-        // Let's blindly sync them.
-
-        const makesArray = Array.from(uniqueMakes).sort().map(name => ({ name }))
-
-        // Upsert Makes
+        // We upsert just these makes to ensure they exist and we have their IDs
         const { data: insertedMakes, error: makeError } = await supabaseClient
             .from('car_makes')
-            .upsert(makesArray, { onConflict: 'name', ignoreDuplicates: false })
-            .select()
+            .upsert(makesToUpsert, { onConflict: 'name', ignoreDuplicates: false })
+            .select();
 
-        if (makeError) throw makeError
-        console.log(`Synced ${insertedMakes.length} makes.`)
+        if (makeError) throw makeError;
 
-        // Now for each Make, fetch Models.
-        // This is rate limited or slow? We might need to loop.
-        // Use a delay or do it for just a few for the demo? 
-        // The user said "on a timer... poll that list". 
-        // In a real prod env, we'd queue this. For now, let's pick "Toyota" and "Honda" and "Ford" + others to ensure they work FIRST
-        // then loop others.
+        // 2. Sync Models for ONLY these makes
+        let totalModels = 0;
 
-        // Optimizing: Only fetch models for makes that are present in our local DB
-        // Let's prioritize the ones we had hardcoded + others.
-        const PRIORITY_MAKES = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'BMW', 'Mercedes-Benz', 'Volkswagen', 'Audi', 'Mazda', 'Hyundai', 'Kia', 'Subaru', 'Jeep', 'Ram', 'Tesla', 'Lexus', 'Acura', 'Dodge', 'GMC', 'Buick', 'Cadillac', 'Lincoln', 'Volvo', 'Porsche', 'Mitsubishi']
-
-        // We will iterate through ALL inserted makes.
         for (const make of insertedMakes) {
-            // Fetch models
-            console.log(`Fetching models for ${make.name}...`)
             try {
-                const modelsRes = await fetch(`${NHTSA_BASE_URL}/GetModelsForMake/${encodeURIComponent(make.name)}?format=json`)
-                const modelsData = await modelsRes.json()
-                const nhtsaModels: NhtsaModel[] = modelsData.Results
+                // NHTSA API to get models for this specific make
+                const modelsRes = await fetch(`${NHTSA_BASE_URL}/GetModelsForMake/${encodeURIComponent(make.name)}?format=json`);
+                const modelsData = await modelsRes.json();
+                const nhtsaModels: NhtsaModel[] = modelsData.Results;
 
-                if (!nhtsaModels || nhtsaModels.length === 0) continue
+                if (!nhtsaModels || nhtsaModels.length === 0) continue;
 
-                const uniqueModels = new Set<string>()
+                // Deduplicate models
+                const uniqueModels = new Set<string>();
                 nhtsaModels.forEach(m => {
-                    const name = formatName(m.Model_Name)
-                    if (name) uniqueModels.add(name)
-                })
+                    const name = formatName(m.Model_Name);
+                    // Filter out garbage (empty, numeric-only codes unless likely a model like "300")
+                    if (name && name.length > 1) uniqueModels.add(name);
+                });
 
                 const modelsArray = Array.from(uniqueModels).sort().map(name => ({
                     make_id: make.id,
                     name
-                }))
+                }));
 
                 const { error: modelError } = await supabaseClient
                     .from('car_models')
-                    .upsert(modelsArray, { onConflict: 'make_id,name', ignoreDuplicates: true })
+                    .upsert(modelsArray, { onConflict: 'make_id,name', ignoreDuplicates: true });
 
-                if (modelError) console.error(`Error syncing models for ${make.name}:`, modelError)
+                if (modelError) {
+                    console.error(`Error syncing models for ${make.name}:`, modelError);
+                } else {
+                    totalModels += modelsArray.length;
+                }
 
             } catch (err) {
-                console.error(`Failed to fetch/sync for ${make.name}`, err)
+                console.error(`Failed to fetch/sync for ${make.name}`, err);
             }
         }
 
         return new Response(
-            JSON.stringify({ message: 'Sync complete', makes: insertedMakes.length }),
+            JSON.stringify({
+                message: 'Sync complete',
+                makes: insertedMakes.length,
+                models: totalModels
+            }),
             {
                 headers: {
                     ...corsHeaders,
