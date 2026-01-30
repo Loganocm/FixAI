@@ -1,5 +1,6 @@
 import { Calendar, ChevronRight, ChevronLeft } from 'lucide-react';
-import { getCarYears } from '../../data/carData';
+// import { getCarYears } from '../../data/carData'; // Deprecated for generic range
+
 
 interface CarYearStepProps {
   value: string;
@@ -11,8 +12,9 @@ interface CarYearStepProps {
 }
 
 export function CarYearStep({ value, onChange, onNext, onBack, carMake, carModel }: CarYearStepProps) {
-  const availableYears = getCarYears(carMake, carModel);
   const currentYear = new Date().getFullYear();
+  // Generate years from current year + 1 down to 1990
+  const availableYears = Array.from({ length: (currentYear + 1) - 1990 + 1 }, (_, i) => currentYear + 1 - i);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
