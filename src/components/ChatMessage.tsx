@@ -335,11 +335,6 @@ function parseMarkdown(text: string): JSX.Element[] {
           <p className="font-bold text-gray-800">{title}</p>
           {renderYouTubeEmbed(url, key++)}
         </div>
-      elements.push(
-        <div key={key++} className="mb-4">
-          <p className="font-bold text-gray-800">{title}</p>
-          {renderYouTubeEmbed(url, key++)}
-        </div>
       );
     } else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
       flushParagraph();
