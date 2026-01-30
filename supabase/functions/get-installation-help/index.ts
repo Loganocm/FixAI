@@ -7,9 +7,10 @@ const corsHeaders = {
 };
 /**
  * Searches YouTube for relevant installation videos using the YouTube Data API.
- */ async function searchYouTubeVideos(apiKey, carMake, carModel, carYear, partName) {
-    const searchQuery = `${carYear} ${carMake} ${carModel} ${partName} installation guide`;
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&maxResults=3&key=${apiKey}`;
+ */ async function searchYouTubeVideos(apiKey, searchQuery) {
+    // 2. Exclude "shorts" to avoid vertical/clickbait content.
+    const finalQuery = `${searchQuery} -shorts`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(finalQuery)}&type=video&videoEmbeddable=true&maxResults=3&key=${apiKey}`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -18,7 +19,7 @@ const corsHeaders = {
         }
         const data = await response.json();
         if (!data.items || data.items.length === 0) return null;
-        let message = "### 🔧 Recommended Installation Videos\n\nHere are a few videos that might help you with the installation:\n\n";
+        let message = "\n\n### 🔧 Recommended Installation Videos\n\nHere are a few videos that might help you with the installation:\n\n";
         for (const item of data.items.slice(0, 3)) {
             const videoId = item.id.videoId;
             const title = item.snippet.title;
@@ -60,7 +61,10 @@ SECURITY & SCOPE PROTOCOLS:
 GUIDE INSTRUCTIONS:
 - Provide clear, comprehensive, step-by-step instructions for installing car parts.
 - Include safety warnings, required tools, and helpful tips.
-- Format your response using markdown.`;
+- Format your response using markdown.
+- CRITICAL: At the very end of your response, on a new line, output a search query for YouTube that matches specific part you described. 
+- Format: "SEARCH_QUERY: {Year} {Make} {Model} {Specific Part Name} installation"
+- Example: "SEARCH_QUERY: 2015 Toyota Camry Cabin Air Filter installation"`;
 
         const messages = [];
 
@@ -91,7 +95,7 @@ Please provide a COMPLETE and DETAILED guide including:
 
         // 3. CALL GEMINI WITH SYSTEM INSTRUCTION
         // Optimization: Use Flash for fast initial guide, Pro for complex follow-up questions
-        const model = conversationHistory.length > 0 ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+        const model = conversationHistory.length > 0 ? "gemini-3-pro-preview" : "gemini-1.5-flash";
 
         const response = await ai.models.generateContent({
             model: model,
@@ -102,25 +106,39 @@ Please provide a COMPLETE and DETAILED guide including:
                 maxOutputTokens: 8192,
             }
         });
-        const guide = response.text || "Sorry, I couldn’t generate a response.";
+
+        let guide = response.text || "Sorry, I couldn’t generate a response.";
+        let youtubeQuery = null;
+
+        // 4. EXTRACT AND REMOVE SEARCH QUERY
+        const queryMatch = guide.match(/SEARCH_QUERY:\s*(.+)$/m);
+        if (queryMatch) {
+            youtubeQuery = queryMatch[1].trim(); // Extract query
+            guide = guide.replace(/SEARCH_QUERY:\s*(.+)$/m, '').trim(); // Remove from visible text
+        }
+
         const newAssistantMessages = [
             {
                 role: "assistant",
                 content: guide
             }
         ];
-        if (conversationHistory.length === 0) {
+
+        // 5. SEARCH YOUTUBE IF QUERY EXISTS (Applied to both initial and chat if AI provides query)
+        if (youtubeQuery) {
             const youtubeApiKey = Deno.env.get("YOUTUBE_API_KEY");
             if (youtubeApiKey) {
-                const videoMessage = await searchYouTubeVideos(youtubeApiKey, carMake, carModel, carYear, partName);
+                // Use the AI-generated query directly
+                const videoMessage = await searchYouTubeVideos(youtubeApiKey, youtubeQuery);
                 if (videoMessage) {
-                    newAssistantMessages.push({
-                        role: "assistant",
-                        content: videoMessage
-                    });
+                    // Start a new message block for the videos so it appends cleanly
+                    if (newAssistantMessages.length > 0) {
+                        newAssistantMessages[0].content += videoMessage;
+                    }
                 }
             }
         }
+
         return new Response(JSON.stringify({
             newMessages: newAssistantMessages
         }), {
