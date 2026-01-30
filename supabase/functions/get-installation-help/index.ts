@@ -49,8 +49,9 @@ Deno.serve(async (req) => {
         const ai = new GoogleGenAI({
             apiKey: geminiApiKey
         });
-        const { carMake, carModel, carYear, conversationHistory = [] } = await req.json();
-        let { partName } = await req.json();
+        const requestData = await req.json();
+        const { carMake, carModel, carYear, conversationHistory = [] } = requestData;
+        let { partName } = requestData;
 
         // 🔧 FIX: Ambiguity Resolution
         // "Air Filter" usually implies "Engine Air Filter", but can be confused with "Cabin Air Filter".
