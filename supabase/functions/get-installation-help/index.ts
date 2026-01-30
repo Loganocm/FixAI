@@ -46,20 +46,9 @@ Deno.serve(async (req) => {
             apiKey: geminiApiKey
         });
         const { carMake, carModel, carYear, partName, conversationHistory = [] } = await req.json();
-        const messages = [];
-        if (conversationHistory.length > 0) {
-            for (const msg of conversationHistory) {
-                messages.push({
-                    role: msg.role === "user" ? "user" : "model",
-                    parts: [
-                        {
-                            text: msg.content
-                        }
-                    ]
-                });
-            }
-        } else {
-            const systemPrompt = `You are an expert automotive mechanic assistant specializing in car part installation.
+
+        // 1. DEFINE SYSTEM PROMPT (Always applies)
+        const systemPrompt = `You are an expert automotive mechanic assistant specializing in car part installation.
 Your ONLY purpose is to provide car repair and installation guides.
 
 SECURITY & SCOPE PROTOCOLS:
@@ -71,8 +60,20 @@ SECURITY & SCOPE PROTOCOLS:
 GUIDE INSTRUCTIONS:
 - Provide clear, comprehensive, step-by-step instructions for installing car parts.
 - Include safety warnings, required tools, and helpful tips.
-- Format your response using markdown.
-- Start with the title of the guide, not an introductory statement.`;
+- Format your response using markdown.`;
+
+        const messages = [];
+
+        // 2. BUILD CONTEXT
+        if (conversationHistory.length > 0) {
+            for (const msg of conversationHistory) {
+                messages.push({
+                    role: msg.role === "user" ? "user" : "model",
+                    parts: [{ text: msg.content }]
+                });
+            }
+        } else {
+            // Initial Prompt construction
             const userPrompt = `I need help installing a ${partName} on my ${carYear} ${carMake} ${carModel}.
 Please provide a COMPLETE and DETAILED guide including:
 1. Overview of the installation process
@@ -81,23 +82,21 @@ Please provide a COMPLETE and DETAILED guide including:
 4. Step-by-step instructions
 5. Common mistakes to avoid
 6. Tips for success`;
+
             messages.push({
                 role: "user",
-                parts: [
-                    {
-                        text: `${systemPrompt}\n\n${userPrompt}`
-                    }
-                ]
+                parts: [{ text: userPrompt }]
             });
         }
+
+        // 3. CALL GEMINI WITH SYSTEM INSTRUCTION
         const response = await ai.models.generateContent({
             model: "gemini-3-pro-preview",
             contents: messages,
+            systemInstruction: systemPrompt, // ✅ Critical: Persists persona across turns
             config: {
-                temperature: 0.6,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192
+                temperature: 0.3, // Lower temperature for more adherence to instructions
+                maxOutputTokens: 8192,
             }
         });
         const guide = response.text || "Sorry, I couldn’t generate a response.";

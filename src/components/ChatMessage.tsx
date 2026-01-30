@@ -65,22 +65,27 @@ const YouTubePlayer: React.FC<YouTubePlayerProps> = ({ videoId, componentKey }) 
     const initializePlayer = () => {
       // Ensure the ref is still valid when this function is called from the queue
       if (playerRef.current) {
-        player = new window.YT.Player(playerRef.current, {
-          height: '100%',
-          width: '100%',
-          videoId: videoId,
-          playerVars: {
-            'rel': 0,
-            'modestbranding': 1,
-            'autoplay': 0,
-          },
-          events: {
-            'onError': (event: any) => {
-              console.error(`Youtubeer Error for video ID ${videoId}:`, event.data);
-              setError(true);
+        try {
+            player = new window.YT.Player(playerRef.current, {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'rel': 0,
+                'modestbranding': 1,
+                'autoplay': 0,
             },
-          },
-        });
+            events: {
+                'onError': (event: any) => {
+                console.error(`Youtubeer Error for video ID ${videoId}:`, event.data);
+                setError(true);
+                },
+            },
+            });
+        } catch (e) {
+            console.error("Critical YouTube Player Init Error:", e);
+            setError(true);
+        }
       }
     };
 
@@ -193,7 +198,10 @@ function renderYouTubeEmbed(url: string, key: number): JSX.Element {
 
 
 /* ----------------------- MARKDOWN PARSER ----------------------- */
-function parseInlineMarkdown(text: string): (string | JSX.Element)[] {
+function parseInlineMarkdown(text: string, depth = 0): (string | JSX.Element)[] {
+  // Prevent infinite recursion stack overflow
+  if (depth > 10) return [text];
+
   const elements: (string | JSX.Element)[] = [];
   let key = 0;
   let currentIndex = 0;
@@ -253,10 +261,10 @@ function parseInlineMarkdown(text: string): (string | JSX.Element)[] {
 
     switch (m.type) {
       case 'bolditalic':
-        elements.push(<strong key={key++} className="font-bold italic">{parseInlineMarkdown(m.content)}</strong>);
+        elements.push(<strong key={key++} className="font-bold italic">{parseInlineMarkdown(m.content, depth + 1)}</strong>);
         break;
       case 'bold':
-        elements.push(<strong key={key++} className="font-bold">{parseInlineMarkdown(m.content)}</strong>);
+        elements.push(<strong key={key++} className="font-bold">{parseInlineMarkdown(m.content, depth + 1)}</strong>);
         break;
       case 'code':
         elements.push(<code key={key++} className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{m.content}</code>);
